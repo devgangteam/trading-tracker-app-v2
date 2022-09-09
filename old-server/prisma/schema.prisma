@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Position {
+  id            String        @id() @default(uuid())
+  tokenPair     String        @db.VarChar
+  ROE           Int?
+  state         PositionState @default(OPEN)
+  positionType  PositionType
+  leverage      Int
+  createdAt     DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime      @default(now()) @db.Timestamp(6)
+  userId        String        @db.VarChar
+  closedAt      DateTime?     @db.Timestamp(6)
+  entryPrice    Float         @default(0)
+  stoplossPrice Float         @default(0)
+  closePrice    Float?        @default(0)
+  margin        Float         @default(0)
+  User          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SocketSession {
+  id       String @id() @default(uuid())
+  socketId String @unique() @db.VarChar
+  userId   String @db.VarChar
+  User     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id             String          @id() @default(uuid())
+  username       String          @unique() @db.VarChar
+  password       String          @db.Text
+  email          String          @unique()
+  lastLoginAt    DateTime?       @db.Timestamp(6)
+  updatedAt      DateTime        @default(now()) @db.Timestamp(6)
+  createdAt      DateTime        @default(now()) @db.Timestamp(6)
+  socketSessions SocketSession[]
+  positions      Position[]
+  profile        Profile?
+  role           Role            @default(MEMBER)
+  userSession    UserSession?
+  leaderId       String?
+  leader         User?           @relation("LeaderMembers", fields: [leaderId], references: [id])
+  members        User[]          @relation("LeaderMembers")
+}
+
+model Profile {
+  id                  String @id() @default(uuid())
+  totalPropertyAmount Float  @default(0)
+  maximumRisk         Float  @default(0)
+  User                User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId              String @unique
+
+  @@index([userId])
+}
+
+model UserSession {
+  id     String     @id() @default(uuid())
+  userId String     @unique
+  User   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status UserStatus
+  date   DateTime   @default(now()) @db.Timestamp(6)
+
+  @@index([userId])
+}
+
+enum Role {
+  ADMIN
+  LEADER
+  MEMBER
+}
+
+enum PositionType {
+  LONG
+  SHORT
+}
+
+enum PositionState {
+  OPEN
+  CLOSED
+}
+
+enum UserStatus {
+  ACTIVE
+  CLOSED
+}
